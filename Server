@@ -1,1 +1,76 @@
+// File: /server/index.js
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { v4: uuidv4 } = require('uuid');
 
+dotenv.config();
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// In-memory storage for demo (replace with MongoDB later)
+const users = [];
+
+// Routes
+
+// Save user profile
+app.post('/api/profile', (req, res) => {
+  const { name, canHelpWith, needHelpWith, availability, learningStyle } = req.body;
+  const newUser = {
+    id: uuidv4(),
+    name,
+    canHelpWith,
+    needHelpWith,
+    availability,
+    learningStyle
+  };
+  users.push(newUser);
+  res.status(201).json({ message: 'Profile saved', user: newUser });
+});
+
+// Get matches for a user
+app.post('/api/match', (req, res) => {
+  const { needHelpWith, availability, id } = req.body;
+  const matches = users.filter(user => {
+    if (user.id === id) return false;
+    const subjectMatch = user.canHelpWith?.some(subject => needHelpWith.includes(subject));
+    const timeOverlap = user.availability?.some(time => availability.includes(time));
+    return subjectMatch && timeOverlap;
+  });
+  res.json({ matches });
+});
+
+// Health check
+app.get('/', (req, res) => {
+  res.send('EduMatch backend running');
+});
+
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+// File: /server/.env
+PORT=5000
+
+// File: /server/package.json
+{
+  "name": "edumatch-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  }
+}
+
+// File: /server/.gitignore
+node_modules
+.env
