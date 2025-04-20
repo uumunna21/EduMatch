@@ -1,1 +1,182 @@
+/*
+EduMatch Frontend (React)
+Basic React + Tailwind CSS + React Router Setup
+*/
 
+// File: /client/src/index.js
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+
+// File: /client/src/App.jsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Quiz from './pages/Quiz';
+import Profile from './pages/Profile';
+import Matches from './pages/Matches';
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/quiz" element={<Quiz />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/matches" element={<Matches />} />
+      </Routes>
+    </Router>
+  );
+}
+
+
+// File: /client/src/pages/Home.jsx
+import React from 'react';
+import { Link } from 'react-router-dom';
+
+export default function Home() {
+  return (
+    <div className="p-6 text-center">
+      <h1 className="text-3xl font-bold mb-4">Welcome to EduMatch</h1>
+      <p className="mb-6">Match with students for peer tutoring based on your learning style and schedule.</p>
+      <Link to="/quiz" className="bg-blue-600 text-white px-4 py-2 rounded">Start Quiz</Link>
+    </div>
+  );
+}
+
+
+// File: /client/src/pages/Quiz.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const questions = [
+  {
+    question: "How do you prefer to learn?",
+    options: { Visual: 'Watching videos', Auditory: 'Listening to audio', Kinesthetic: 'Hands-on practice' }
+  },
+  {
+    question: "What's your favorite study method?",
+    options: { Visual: 'Reading diagrams', Auditory: 'Lectures', Kinesthetic: 'Practice exercises' }
+  }
+];
+
+export default function Quiz() {
+  const [current, setCurrent] = useState(0);
+  const [scores, setScores] = useState({});
+  const navigate = useNavigate();
+
+  const handleAnswer = (style) => {
+    setScores({ ...scores, [style]: (scores[style] || 0) + 1 });
+    if (current + 1 < questions.length) {
+      setCurrent(current + 1);
+    } else {
+      const result = Object.entries(scores).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+      localStorage.setItem('learningStyle', result);
+      navigate('/profile');
+    }
+  };
+
+  const q = questions[current];
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-semibold mb-4">{q.question}</h2>
+      {Object.entries(q.options).map(([style, label]) => (
+        <button key={style} onClick={() => handleAnswer(style)} className="block w-full p-3 mb-2 bg-gray-100 rounded">
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
+// File: /client/src/pages/Profile.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function Profile() {
+  const [name, setName] = useState('');
+  const [canHelpWith, setCanHelpWith] = useState('');
+  const [needHelpWith, setNeedHelpWith] = useState('');
+  const [availability, setAvailability] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const learningStyle = localStorage.getItem('learningStyle');
+    const profile = { name, canHelpWith, needHelpWith, availability, learningStyle };
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    navigate('/matches');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <input className="input" placeholder="Name" value={name} onChange={e => setName(e.target.value)} />
+      <input className="input" placeholder="Subjects you can help with (comma separated)" value={canHelpWith} onChange={e => setCanHelpWith(e.target.value)} />
+      <input className="input" placeholder="Subjects you need help with" value={needHelpWith} onChange={e => setNeedHelpWith(e.target.value)} />
+      <input className="input" placeholder="Availability (e.g., Mon10, Wed2)" value={availability} onChange={e => setAvailability(e.target.value)} />
+      <button className="bg-green-600 text-white px-4 py-2 rounded">Save & Find Matches</button>
+    </form>
+  );
+}
+
+
+// File: /client/src/pages/Matches.jsx
+import React from 'react';
+
+export default function Matches() {
+  const currentUser = JSON.parse(localStorage.getItem('userProfile'));
+  const sampleUsers = [
+    {
+      name: 'Jordan',
+      canHelpWith: 'Math',
+      needHelpWith: 'Java',
+      availability: 'Mon10, Wed2',
+      learningStyle: 'Auditory'
+    },
+    {
+      name: 'Taylor',
+      canHelpWith: 'Java',
+      needHelpWith: 'Math',
+      availability: 'Wed2',
+      learningStyle: 'Visual'
+    }
+  ];
+
+  const matches = sampleUsers.filter(user =>
+    user.canHelpWith.includes(currentUser.needHelpWith) &&
+    user.availability.split(',').some(slot => currentUser.availability.includes(slot))
+  );
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Your Matches</h2>
+      {matches.length === 0 ? (
+        <p>No matches found yet.</p>
+      ) : (
+        matches.map((match, index) => (
+          <div key={index} className="border p-4 mb-2 rounded">
+            <h3 className="font-bold">{match.name}</h3>
+            <p>Can help with: {match.canHelpWith}</p>
+            <p>Learning style: {match.learningStyle}</p>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+
+// File: /client/src/index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.input {
+  @apply w-full p-2 border rounded;
+}
